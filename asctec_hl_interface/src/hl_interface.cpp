@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "hl_interface.h"
 #include "helper.h"
-#include <asctec_hl_comm/MotorSpeed.h>
 
 HLInterface::HLInterface(ros::NodeHandle & nh, CommPtr & comm) :
   nh_(nh), pnh_("~/fcu"), comm_(comm), gps_status_(sensor_msgs::NavSatStatus::STATUS_NO_FIX), gps_satellites_used_(0),
@@ -60,6 +59,8 @@ HLInterface::HLInterface(ros::NodeHandle & nh, CommPtr & comm) :
   control_sub_ = nh_.subscribe("control", 1, &HLInterface::controlCmdCallback, this,
    ros::TransportHints().tcpNoDelay());
   control_mav_comm_sub_ = nh_.subscribe("command/roll_pitch_yawrate_thrust", 1, &HLInterface::controlCmdCallbackMavComm, this,
+   ros::TransportHints().tcpNoDelay());
+  control_direct_motor_sub_ = nh_.subscribe("command/direct_motor", 1, &HLInterface::controlCmdDirectMotorCallback, this,
    ros::TransportHints().tcpNoDelay());
 
   motor_srv_ = nh_.advertiseService("motor_control", &HLInterface::cbMotors, this);
@@ -547,6 +548,10 @@ void HLInterface::controlCmdCallbackMavComm(const mav_msgs::RollPitchYawrateThru
   sendControlCmd(msg_old);
 }
 
+void HLInterface::controlCmdDirectMotorCallback(const asctec_hl_comm::MotorSpeed::ConstPtr &msg)
+{
+  sendDirectMotorCommandHL(*msg);
+}
 
 bool HLInterface::cbCtrl(asctec_hl_comm::MavCtrlSrv::Request & req, asctec_hl_comm::MavCtrlSrv::Response & resp)
 {
@@ -787,6 +792,18 @@ void HLInterface::sendPosCommandHL(const asctec_hl_comm::mav_ctrl & msg, asctec_
 
   comm_->sendPacket(HLI_PACKET_ID_CONTROL_HL, ctrlHL);
   seq++;
+}
+
+void HLInterface::sendDirectMotorCommandHL(const asctec_hl_comm::MotorSpeed & cmd)
+{
+  HLI_DIRECT_MOTOR_CMD motor_cmd;
+  bool out_of_bounds = false;
+  for(int i = 0; i < 6; ++i) {
+    if(cmd.motor_speed[i] > 200) out_of_bounds = true;
+    motor_cmd.motors[i] = cmd.motor_speed[i];
+  }
+  if(out_of_bounds) ROS_ERROR("AscTec expects motor commands in the range [0..200]");
+  comm_->sendPacket(HLI_PACKET_ID_DIRECT_MOTOR_CMD, motor_cmd);
 }
 
 void HLInterface::cbConfig(asctec_hl_interface::HLInterfaceConfig & config, uint32_t level)

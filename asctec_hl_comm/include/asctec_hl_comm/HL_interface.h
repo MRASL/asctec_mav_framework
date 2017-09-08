@@ -58,6 +58,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define HLI_PACKET_ID_ACK                       0x11    ///< Acknowledge packet
 #define HLI_PACKET_ID_CONFIG                    0x12    ///< Acknowledge packet
 #define HLI_PACKET_ID_MAG                       0x13    ///< Magnetic compass data packet
+#define HLI_PACKET_ID_DIRECT_MOTOR_CMD          0x14    ///< Direct motor command from OBC that the HL forwards to LL
 
 
 // flight mode defines for communication with LL processor ----------------------------------------------
@@ -364,5 +365,11 @@ __attribute__((packed))
   int16_t z;
 }HLI_MAG;
 
+/// packet with motor commands
+typedef struct
+__attribute__((packed))
+{
+  uint8_t motors[6];
+}HLI_DIRECT_MOTOR_CMD;
 
 #endif

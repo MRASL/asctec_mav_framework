@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <asctec_hl_comm/mav_ctrl.h>
 #include <asctec_hl_comm/mav_rcdata.h>
 #include <asctec_hl_comm/mav_status.h>
+#include <asctec_hl_comm/MotorSpeed.h>
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/Vector3Stamped.h>
 #include <sensor_msgs/Imu.h>
@@ -91,6 +92,7 @@ private:
   ros::Publisher mag_pub_;
   ros::Subscriber control_sub_;
   ros::Subscriber control_mav_comm_sub_;
+  ros::Subscriber control_direct_motor_sub_;
 
 
   ros::ServiceServer motor_srv_;
@@ -126,6 +128,8 @@ private:
 
   void controlCmdCallbackMavComm(const mav_msgs::RollPitchYawrateThrustConstPtr &msg);
 
+  void controlCmdDirectMotorCallback(const asctec_hl_comm::MotorSpeed::ConstPtr &msg);
+
   /// evaluates the mav_ctrl message and sends the appropriate commands to the HLP
   void sendControlCmd(const asctec_hl_comm::mav_ctrl & ctrl, asctec_hl_comm::mav_ctrl * ctrl_result=NULL);
 
@@ -140,6 +144,9 @@ private:
 
   /// sends a position (=waypoint) command to the HL. Position control on the HL has to be enabled
   void sendPosCommandHL(const asctec_hl_comm::mav_ctrl & ctrl, asctec_hl_comm::mav_ctrl * ctrl_result=NULL);
+
+  /// sends direct motor commands to the HL which are passed on to the LL
+  void sendDirectMotorCommandHL(const asctec_hl_comm::MotorSpeed & cmd);
 
   int16_t gps_status_;
   int16_t gps_satellites_used_;

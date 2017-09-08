@@ -63,6 +63,8 @@ int64_t time_correction = 0;
 
 short cmdLLValid = 0;
 unsigned char cmdLLNew = 0;
+short cmdMotorValid = 0;
+unsigned char cmdMotorNew = 0;
 
 short extPositionValid = 0;
 
@@ -127,6 +129,9 @@ PacketInfo *packetSubscription;
 HLI_CONFIG hli_config;
 PacketInfo *packetConfig;
 
+HLI_DIRECT_MOTOR_CMD directMotorCmd;
+PacketInfo *packetDirectMotorCmd;
+
 // ######################################################################################
 
 void sdkInit(void)
@@ -161,12 +166,13 @@ void sdkInit(void)
   packetBaudrate = registerPacket(HLI_PACKET_ID_BAUDRATE, &baudrate);
   packetSubscription = registerPacket(HLI_PACKET_ID_SUBSCRIPTION, &subscription);
   packetConfig = registerPacket(HLI_PACKET_ID_CONFIG, &hli_config);
+  packetDirectMotorCmd = registerPacket(HLI_PACKET_ID_DIRECT_MOTOR_CMD, &directMotorCmd);
 
   UART0_rxFlush();
   UART0_txFlush();
 
   // init ssdk
-  onboard_matlab_initialize();
+  //onboard_matlab_initialize();
 
   // init dekf, also packet subscription takes place here
   DEKF_init(&dekf, &extPosition);
@@ -219,14 +225,36 @@ void sdkInit(void)
 void SDK_mainloop(void)
 {
   sdkCycleStartTime = T1TC;
-
-  WO_SDK.ctrl_mode = 0x02; // attitude and throttle control
-  WO_SDK.disable_motor_onoff_by_stick = 0;
-
   sdkLoops++;
 
   parseRxFifo();
 
+  // check for a new motor cmd packet
+  if(packetDirectMotorCmd->updated)
+  {
+    cmdMotorNew = 1;
+    packetDirectMotorCmd->updated = 0;
+  }
+
+  // check if motor commands arrive on time (max every CMD_MAX_PERIOD ms)
+  if ((sdkLoops % CMD_MAX_PERIOD) == 0)
+  {
+    if (cmdMotorNew == 1)
+    {
+      cmdMotorNew = 0;
+      cmdMotorValid++;
+    }
+    else
+    {
+      cmdMotorValid--;
+    }
+
+    if (cmdMotorValid < -2)
+      cmdMotorValid = -2; // min 3 packets required
+    else if (cmdMotorValid > 3)
+      cmdMotorValid = 3;  // fall back after 3 missed packets
+  }
+/*
   // check for new LL command packet
   if (packetCmdLL->updated)
   {
@@ -253,7 +281,7 @@ void SDK_mainloop(void)
     else if (cmdLLValid > 3)
       cmdLLValid = 3; // fall back after 3 missed packets
   }
-
+*/
   // check for motor start/stop packet
   if (packetMotors->updated)
   {
@@ -263,7 +291,7 @@ void SDK_mainloop(void)
   }
 
   // check for new HL command packet
-  if (packetCmdHL->updated)
+  /*if (packetCmdHL->updated)
   {
     packetCmdHL->updated = 0;
     // SSDK operates in NED, need to convert from ENU
@@ -305,7 +333,7 @@ void SDK_mainloop(void)
     }
 
   }
-
+*/
   // handle parameter packet
   if (packetSSDKParams->updated == 1)
   {
@@ -384,17 +412,56 @@ void SDK_mainloop(void)
   // reads position reference from extPosition
   // reads position/velocity command from extPositionCmd
   // finally writes to WO_CTRL_Input. therefore, make sure to overwrite it after this call if you don't want to have its output
-  rt_OneStep();
+  //rt_OneStep();
+
+	WO_SDK.ctrl_mode=0x00;	//0x00: direct individual motor control: individual commands for motors 0..3
+							//0x01: direct motor control using standard output mapping: commands are interpreted as pitch, roll, yaw and thrust inputs; no attitude controller active
+							//0x02: attitude and throttle control: commands are input for standard attitude controller
+							//0x03: GPS waypoint control
+
+	WO_SDK.ctrl_enabled=1;  //0: disable control by HL processor
+							//1: enable control by HL processor
+
+	WO_SDK.disable_motor_onoff_by_stick=0;
+
+	unsigned int i;
+
+  if(cmdMotorValid) 
+  {
+    WO_Direct_Individual_Motor_Control.motor[0]=directMotorCmd.motors[0];
+    WO_Direct_Individual_Motor_Control.motor[1]=directMotorCmd.motors[1];
+    WO_Direct_Individual_Motor_Control.motor[2]=directMotorCmd.motors[2];
+    WO_Direct_Individual_Motor_Control.motor[3]=directMotorCmd.motors[3];
+    WO_Direct_Individual_Motor_Control.motor[4]=directMotorCmd.motors[4];
+    WO_Direct_Individual_Motor_Control.motor[5]=directMotorCmd.motors[5];
+  }
+  else 
+  {
+    WO_Direct_Individual_Motor_Control.motor[0]=0;
+    WO_Direct_Individual_Motor_Control.motor[1]=0;
+    WO_Direct_Individual_Motor_Control.motor[2]=0;
+    WO_Direct_Individual_Motor_Control.motor[3]=0;
+    WO_Direct_Individual_Motor_Control.motor[4]=0;
+    WO_Direct_Individual_Motor_Control.motor[5]=0;
+  }
+	//make sure commands are never 0 so that motors will always keep spinning
+  //also make sure that commands stay within range
+  for(i=0;i<6;i++)
+  {
+  	if(!WO_Direct_Individual_Motor_Control.motor[i]) WO_Direct_Individual_Motor_Control.motor[i]=1;
+  	else if (WO_Direct_Individual_Motor_Control.motor[i]>200) WO_Direct_Individual_Motor_Control.motor[i]=200;
+  }
 
   // --- write commands to LL ------------------------------------------------
-
+/*
   short motorsRunning = LL_1khz_attitude_data.status2 & 0x1;
 
   if (motor_state == -1 || motor_state == 2)
   { // motors are either stopped or running --> normal operation
 
     // commands are always written to LL by the Matlab controller, decide if we need to overwrite them
-    if (extPositionValid > 0 && statusData.have_SSDK_parameters == 1 && hli_config.mode_position_control == HLI_MODE_POSCTRL_HL)
+    //if (extPositionValid > 0 && statusData.have_SSDK_parameters == 1 && hli_config.mode_position_control == HLI_MODE_POSCTRL_HL)
+	  if (statusData.have_SSDK_parameters == 1 && hli_config.mode_position_control == HLI_MODE_POSCTRL_HL)
     {
       WO_CTRL_Input.ctrl = hli_config.position_control_axis_enable;
       WO_SDK.ctrl_enabled = 1;
@@ -462,7 +529,7 @@ void SDK_mainloop(void)
   // TODO: thrust limit in case something really goes wrong, may be removed
   if (WO_CTRL_Input.thrust > 4095)
     WO_CTRL_Input.thrust = 4095;
-
+*/
   // ------------------------------------------------------------------------
 
 
