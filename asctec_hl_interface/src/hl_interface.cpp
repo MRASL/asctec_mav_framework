@@ -548,7 +548,7 @@ void HLInterface::controlCmdCallbackMavComm(const mav_msgs::RollPitchYawrateThru
   sendControlCmd(msg_old);
 }
 
-void HLInterface::controlCmdDirectMotorCallback(const asctec_hl_comm::MotorSpeed::ConstPtr &msg)
+void HLInterface::controlCmdDirectMotorCallback(const mav_msgs::Actuators::ConstPtr &msg)
 {
   sendDirectMotorCommandHL(*msg);
 }
@@ -794,15 +794,33 @@ void HLInterface::sendPosCommandHL(const asctec_hl_comm::mav_ctrl & msg, asctec_
   seq++;
 }
 
-void HLInterface::sendDirectMotorCommandHL(const asctec_hl_comm::MotorSpeed & cmd)
+void HLInterface::sendDirectMotorCommandHL(const mav_msgs::Actuators & cmd)
 {
   HLI_DIRECT_MOTOR_CMD motor_cmd;
   bool out_of_bounds = false;
+  for(int i = 0; i < 6; ++i) {
+    if(cmd.normalized[i] < 0 || cmd.normalized[i] > 1) {
+      out_of_bounds = true;
+      break;
+    } else {
+      motor_cmd.motors[i] = cmd.normalized[i] * 200.0;
+    }
+  }
+
+  if(out_of_bounds) {
+    ROS_ERROR_THROTTLE(1, "AscTec expects motor commands in the range [0..200]");
+    for(int i = 0; i < 6; ++i) {
+      motor_cmd.motors[i] = 0;
+    }
+  }
+
+  /*bool out_of_bounds = false;
   for(int i = 0; i < 6; ++i) {
     if(cmd.motor_speed[i] > 200) out_of_bounds = true;
     motor_cmd.motors[i] = cmd.motor_speed[i];
   }
   if(out_of_bounds) ROS_ERROR("AscTec expects motor commands in the range [0..200]");
+  */
   comm_->sendPacket(HLI_PACKET_ID_DIRECT_MOTOR_CMD, motor_cmd);
 }
 

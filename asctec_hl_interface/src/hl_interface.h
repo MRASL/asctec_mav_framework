@@ -50,7 +50,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include <mav_msgs/RollPitchYawrateThrust.h>
-
+#include <mav_msgs/Actuators.h>
 
 // service includes
 #include <asctec_hl_comm/MavCtrlSrv.h>
@@ -98,7 +98,7 @@ private:
   ros::ServiceServer motor_srv_;
   ros::ServiceServer crtl_srv_;
 
-  static const double kDefaultMaxRCChannelValue = 4080;
+  static constexpr double kDefaultMaxRCChannelValue = 4080;
 
   // callback functions for data from the serial port
   void processImuData(uint8_t * buf, uint32_t bufLength);
@@ -128,7 +128,7 @@ private:
 
   void controlCmdCallbackMavComm(const mav_msgs::RollPitchYawrateThrustConstPtr &msg);
 
-  void controlCmdDirectMotorCallback(const asctec_hl_comm::MotorSpeed::ConstPtr &msg);
+  void controlCmdDirectMotorCallback(const mav_msgs::Actuators::ConstPtr &msg);
 
   /// evaluates the mav_ctrl message and sends the appropriate commands to the HLP
   void sendControlCmd(const asctec_hl_comm::mav_ctrl & ctrl, asctec_hl_comm::mav_ctrl * ctrl_result=NULL);
@@ -146,7 +146,7 @@ private:
   void sendPosCommandHL(const asctec_hl_comm::mav_ctrl & ctrl, asctec_hl_comm::mav_ctrl * ctrl_result=NULL);
 
   /// sends direct motor commands to the HL which are passed on to the LL
-  void sendDirectMotorCommandHL(const asctec_hl_comm::MotorSpeed & cmd);
+  void sendDirectMotorCommandHL(const mav_msgs::Actuators & cmd);
 
   int16_t gps_status_;
   int16_t gps_satellites_used_;

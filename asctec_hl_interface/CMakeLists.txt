@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_fusion_comm
   sensor_msgs
+  mav_msgs
   tf
 )
 
@@ -34,7 +35,7 @@ generate_dynamic_reconfigure_options(cfg/HLInterface.cfg cfg/SSDK.cfg)
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 catkin_package(
     DEPENDS
-    CATKIN_DEPENDS actionlib asctec_hl_comm diagnostic_updater dynamic_reconfigure geometry_msgs roscpp sensor_fusion_comm sensor_msgs tf
+    CATKIN_DEPENDS actionlib asctec_hl_comm diagnostic_updater dynamic_reconfigure geometry_msgs roscpp sensor_fusion_comm sensor_msgs mav_msgs tf
     INCLUDE_DIRS
     LIBRARIES
 )
