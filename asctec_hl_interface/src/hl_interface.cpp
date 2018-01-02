@@ -799,11 +799,11 @@ void HLInterface::sendDirectMotorCommandHL(const mav_msgs::Actuators & cmd)
   HLI_DIRECT_MOTOR_CMD motor_cmd;
   bool out_of_bounds = false;
   for(int i = 0; i < 6; ++i) {
-    if(cmd.normalized[i] < 0 || cmd.normalized[i] > 1) {
+    if(cmd.normalized[i] < 0 || cmd.normalized[i] > 200) {
       out_of_bounds = true;
       break;
     } else {
-      motor_cmd.motors[i] = cmd.normalized[i] * 200.0;
+      motor_cmd.motors[i] = cmd.normalized[i];
     }
   }
 
