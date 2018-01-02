@@ -1,8 +1,8 @@
 #!/bin/bash -e
 
-rm -rf /tmp/arm7-elf-gcc
-mkdir /tmp/arm7-elf-gcc
-cd /tmp/arm7-elf-gcc
+rm -rf ~/Downloads/arm7-elf-gcc
+mkdir ~/Downloads/arm7-elf-gcc
+cd ~/Downloads/arm7-elf-gcc
 curl -S http://www.asctec.de/downloads/software/sdk/arm7-gcc-2012-03-28-bin.tar.bz2 > arm7-gcc-2012-03-28-bin.tar.bz2
 tar -xvf arm7-gcc-2012-03-28-bin.tar.bz2
 
@@ -19,4 +19,4 @@ do
    chmod a+x $i
 done
 
-#export PATH=$PATH:/tmp/arm7-elf-gcc/usr/local/arm7/bin
+export PATH=$PATH:~/Downloads/arm7-elf-gcc/usr/local/arm7/bin
